@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bubble Shooter Game</title>
+<style>
+    body {
+        margin: 0;
+        background: #111;
+        overflow: hidden;
+        font-family: Arial;
+        color: white;
+        text-align: center;
+    }
+
+    #gameCanvas {
+        display: block;
+        margin: auto;
+        background: #222;
+        border: 3px solid white;
+    }
+
+    #info {
+        padding: 10px;
+        font-size: 20px;
+    }
+
+    #nextColor {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: inline-block;
+        border: 2px solid white;
+    }
+</style>
+</head>
+
+<body>
+
+<div id="info">
+    Score: <span id="score">0</span> |
+    Next Bubble: <span id="nextColor"></span>
+</div>
+
+<canvas id="gameCanvas" width="450" height="600"></canvas>
+
+<script>
+
+//   BASIC GAME VARIABLES
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+const scoreDisplay = document.getElementById("score");
+const nextColorDisplay = document.getElementById("nextColor");
+
+const ROWS = 8;
+const COLS = 10;
+const RADIUS = 20;
+const COLORS = ["red", "yellow", "blue", "green", "purple", "orange"];
+
+let bubbles = [];
+let shooterX = canvas.width / 2;
+let shooterY = canvas.height - 30;
+
+let bullet = null;
+let nextColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+
+nextColorDisplay.style.background = nextColor;
+
+
+//   CREATE INITIAL BUBBLE GRID
+
+function createInitialGrid() {
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            bubbles.push({
+                x: c * (RADIUS * 2) + RADIUS,
+                y: r * (RADIUS * 2) + RADIUS,
+                color: COLORS[Math.floor(Math.random() * COLORS.length)]
+            });
+        }
+    }
+}
+createInitialGrid();
+
+//   SHOOT A BUBBLE
+
+canvas.addEventListener("click", (e) => {
+    if (bullet) return;
+
+    let rect = canvas.getBoundingClientRect();
+    let mx = e.clientX - rect.left;
+    let my = e.clientY - rect.top;
+
+    let angle = Math.atan2(my - shooterY, mx - shooterX);
+
+    bullet = {
+        x: shooterX,
+        y: shooterY,
+        dx: Math.cos(angle) * 6,
+        dy: Math.sin(angle) * 6,
+        color: nextColor
+    };
+
+    nextColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+    nextColorDisplay.style.background = nextColor;
+});
+
+
+//   DRAW BUBBLES
+
+function drawBubbles() {
+    for (let b of bubbles) {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, RADIUS, 0, Math.PI * 2);
+        ctx.fillStyle = b.color;
+        ctx.fill();
+    }
+}
+
+
+//   DRAW SHOOTER & BULLET
+
+function drawShooter() {
+    ctx.beginPath();
+    ctx.arc(shooterX, shooterY, RADIUS, 0, Math.PI * 2);
+    ctx.fillStyle = "white";
+    ctx.fill();
+}
+
+function drawBullet() {
+    if (!bullet) return;
+    ctx.beginPath();
+    ctx.arc(bullet.x, bullet.y, RADIUS, 0, Math.PI * 2);
+    ctx.fillStyle = bullet.color;
+    ctx.fill();
+}
+
+//   UPDATE BULLET
+
+function updateBullet() {
+    if (!bullet) return;
+
+    bullet.x += bullet.dx;
+    bullet.y += bullet.dy;
+
+    // wall bounce
+    if (bullet.x < RADIUS || bullet.x > canvas.width - RADIUS) {
+        bullet.dx *= -1;
+    }
+
+    // hit top → stick new bubble
+    if (bullet.y < RADIUS) {
+        bubbles.push({ x: bullet.x, y: bullet.y, color: bullet.color });
+        bullet = null;
+        return;
+    }
+
+    // check collision with bubbles
+    for (let i = 0; i < bubbles.length; i++) {
+        let b = bubbles[i];
+
+        let dist = Math.hypot(bullet.x - b.x, bullet.y - b.y);
+
+        if (dist < RADIUS * 2) {
+            // stick bubble
+            bubbles.push({ x: bullet.x, y: bullet.y, color: bullet.color });
+
+            // remove touched bubble
+            bubbles.splice(i, 1);
+
+            scoreDisplay.innerText = parseInt(scoreDisplay.innerText) + 10;
+
+            bullet = null;
+            return;
+        }
+    }
+}
+
+//   GAME LOOP
+
+function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawBubbles();
+    drawShooter();
+    drawBullet();
+    updateBullet();
+
+    requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+
+</body>
+</html>
